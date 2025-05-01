@@ -28,9 +28,9 @@ make init
 ## oder:
 
 ```shell
-docker compose up --build
+docker compose up --build -d
 ## Dependencies im Container installieren
-docker run --rm -i --tty -v $(pwd):/app composer:lts install
+docker run --rm -i --tty -v $(pwd):/app composer:lts install --ignore-platform-reqs
 docker compose exec php bin/console assets:install --relative
 ```
 
@@ -67,8 +67,8 @@ Bitte mache in regelmäßigen Abständen Commits deiner Arbeit, damit wir den Fo
 Wenn du fertig bist, erstelle einen Pull Request in deinem Fork.
 
 ## Aufgabenstellung
-Es soll eine Backend-Api erstellt werden, mit der die Kundendaten eines Fondsvermittlers ausgelesen, aktualisiert sowie neu erstellt und gelöscht werden können. Die Ausgabe soll im JSON(+ld) Format erfolgen.
-
+Es soll eine Backend-Api erstellt werden, mit der die Kundendaten eines Fondsvermittlers ausgelesen, aktualisiert sowie neu erstellt und gelöscht werden können. Die Ausgabe soll im JSON(application/ld+json) Format erfolgen.
+s
 Die API soll **vorrangig** mit Hilfe von [API-Platform](https://api-platform.com/docs/core/) erstellt und mit [OpenApi](https://www.openapis.org/) dokumentiert werden.    
 
 Alle Bundles müssen selbst konfiguriert und eingestellt werden.
