@@ -1,3 +1,10 @@
+
+---
+
+### ⮁ [ Hinweise zu Implementierungsdetails und technischen Entscheidungen](solution.md) 
+
+--- 
+
 # Test Symfony Backend
 **_verfügbare Zeit: 2 - 3 h_**
 
