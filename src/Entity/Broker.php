@@ -10,8 +10,8 @@ declare(strict_types=1);
 namespace App\Entity;
 
 use App\Repository\BrokerRepository;
-use Doctrine\ORM\Mapping as ORM;
 use Doctrine\DBAL\Types\Types;
+use Doctrine\ORM\Mapping as ORM;
 
 #[ORM\Entity(repositoryClass: BrokerRepository::class)]
 #[ORM\Table(name: 'std.vermittler')]

@@ -15,18 +15,20 @@ use ApiPlatform\Metadata\GetCollection;
 use ApiPlatform\Metadata\Post;
 use ApiPlatform\Metadata\Put;
 use ApiPlatform\Metadata\Tests\Fixtures\Metadata\Get;
+use App\Doctrine\Random8UpperCharacterGenerator;
 use App\Repository\CustomerRepository;
 use App\State\CustomerProcessor;
-use DateTimeInterface;
+use DateTimeImmutable;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
+use Doctrine\Common\Collections\ReadableCollection;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
+use RuntimeException;
 use Symfony\Component\Serializer\Annotation\Context;
 use Symfony\Component\Serializer\Annotation\Groups;
 use Symfony\Component\Serializer\Annotation\Ignore;
 use Symfony\Component\Serializer\Annotation\SerializedName;
-use App\Doctrine\Random8UpperCharacterGenerator;
 use Symfony\Component\Validator\Constraints as Assert;
 
 #[ORM\Entity(
@@ -66,7 +68,7 @@ class Customer
         minMessage: 'Property "vorname" must be at least {{ limit }} characters long',
         maxMessage: 'Property "vorname" cannot be longer than {{ limit }} characters'
     )]
-    #[ORM\Column(name: 'vorname',type: Types::STRING,  length: 255)]
+    #[ORM\Column(name: 'vorname', type: Types::STRING, length: 255)]
     private string $firstName;
 
     #[Groups(['customer:read', 'customer:write'])]
@@ -90,10 +92,10 @@ class Customer
     #[Groups(['customer:read', 'customer:write'])]
     #[SerializedName('geburtsdatum')]
     #[Assert\NotBlank(message: 'Property "geburtstag" cannot be blank')]
-    #[Assert\Type(DateTimeInterface::class)]
+    #[Assert\Type(DateTimeImmutable::class)]
     #[Assert\LessThan('today', message: 'Property "geburtstag" must be in the past')]
     #[ORM\Column(name: 'geburtsdatum', type: Types::DATETIME_IMMUTABLE, nullable: true)]
-    private ?DateTimeInterface $dateOfBirth = null;
+    private ?DateTimeImmutable $dateOfBirth = null;
 
     // 'männlich', 'weiblich', 'divers'
     #[Groups(['customer:read', 'customer:write'])]
@@ -142,7 +144,7 @@ class Customer
         $this->lastName = $lastName;
     }
 
-    public function setDateOfBirth(?DateTimeInterface $dateOfBirth): self
+    public function setDateOfBirth(?DateTimeImmutable $dateOfBirth): self
     {
         $this->dateOfBirth = $dateOfBirth?->setTime(0, 0);
 
@@ -186,11 +188,19 @@ class Customer
         return $this;
     }
 
+    public function setCustomerUser(CustomerUser $customerUser): Customer
+    {
+        $this->customerUser = $customerUser;
+
+        return $this;
+    }
+
     #[Groups(['customer:read'])]
     #[SerializedName('vermittlerId')]
     public function getBrokerId(): int
     {
-        return $this->getBroker()->getId();
+        return $this->getBroker()->getId()
+            ?? throw new RuntimeException('Broker id not yet set. Not persisted?');
     }
 
     public function getId(): ?string
@@ -213,7 +223,7 @@ class Customer
         return $this->company;
     }
 
-    public function getDateOfBirth(): ?DateTimeInterface
+    public function getDateOfBirth(): ?DateTimeImmutable
     {
         return $this->dateOfBirth;
     }
@@ -240,19 +250,26 @@ class Customer
         return $this->customerUser;
     }
 
+    /**
+     * @return Collection<int,CustomerAddressDetail>
+     */
     #[Ignore()]
     public function getCustomerAddressDetails(): Collection
     {
         return $this->customerAddressDetails;
     }
 
+    /**
+     * @return ReadableCollection<int, Address>
+     */
     #[Groups(['customer:read'])]
     #[SerializedName('adressen')]
-    public function getCustomerRelatedAddresses(): Collection
+    public function getCustomerRelatedAddresses(): ReadableCollection
     {
         return $this->customerAddressDetails->map(
             function (CustomerAddressDetail $customerAddressDetail) {
                 $customerAddressDetail->getAddress()->setCustomerRelatedCustomerAddressDetail($customerAddressDetail);
+
                 return $customerAddressDetail->getAddress();
             }
         );

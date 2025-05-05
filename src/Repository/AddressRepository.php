@@ -55,7 +55,6 @@ class AddressRepository extends ServiceEntityRepository
     }
 
     /**
-     * @param string $customerId
      * @return list<Address>
      */
     public function getCustomerAddresses(string $customerId): mixed
@@ -71,6 +70,7 @@ class AddressRepository extends ServiceEntityRepository
 
         $queryBuilder->setParameter('customerId', $customerId);
 
+        /** @var list<Address> */
         return $queryBuilder->getQuery()->getResult();
     }
 }

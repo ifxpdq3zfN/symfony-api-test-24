@@ -16,7 +16,6 @@ abstract class WebTestCase extends \Symfony\Bundle\FrameworkBundle\Test\WebTestC
      * @template T of object
      *
      * @param class-string<T> $type
-     *
      * @return T&object
      */
     protected function getService(string $type, ?string $serviceName = null): object
@@ -83,8 +82,14 @@ abstract class WebTestCase extends \Symfony\Bundle\FrameworkBundle\Test\WebTestC
     protected function extractMethods(array $data, string $id): array
     {
         $supportedClass = $this->extractSupportedClass($data, $id);
+        $methods = array_values(array_unique($this->extractOperationMethods($supportedClass)));
+        foreach ($methods as $method) {
+            self::assertIsString($method);
+            self::assertNotSame('', $method);
+        }
 
-        return array_unique($this->extractOperationMethods($supportedClass));
+        /** @var list<non-empty-string> */
+        return $methods;
     }
 
     /**
@@ -97,8 +102,14 @@ abstract class WebTestCase extends \Symfony\Bundle\FrameworkBundle\Test\WebTestC
         $id = lcfirst($id);
         $supportedClass = $this->extractSupportedClass($data, 'Entrypoint');
         $supportedProperty = $this->extractedSupportedProperty($supportedClass, "Entrypoint/{$id}");
+        $methods = array_values(array_unique($this->extractOperationMethods($supportedProperty)));
+        foreach ($methods as $method) {
+            self::assertIsString($method);
+            self::assertNotSame('', $method);
+        }
 
-        return array_unique($this->extractOperationMethods($supportedProperty));
+        /** @var list<non-empty-string> */
+        return $methods;
     }
 
     /**
@@ -109,6 +120,7 @@ abstract class WebTestCase extends \Symfony\Bundle\FrameworkBundle\Test\WebTestC
     protected function extractSupportedClass(array $data, string $id): array
     {
         $supportedClasses = $data['hydra:supportedClass'] ?? [];
+        $this->assertIsListOfArray($supportedClasses);
         $filteredSupportedClasses = array_filter(
             $supportedClasses,
             static fn (array $supportedClass) => $supportedClass['@id'] === "#{$id}"
@@ -116,6 +128,7 @@ abstract class WebTestCase extends \Symfony\Bundle\FrameworkBundle\Test\WebTestC
         self::assertCount(1, $filteredSupportedClasses);
         $supportedClasses = $filteredSupportedClasses[array_key_first($filteredSupportedClasses)] ?? null;
         self::assertNotNull($supportedClasses);
+        $this->assertIsAssociativeArray($supportedClasses);
 
         return $supportedClasses;
     }
@@ -128,7 +141,9 @@ abstract class WebTestCase extends \Symfony\Bundle\FrameworkBundle\Test\WebTestC
     protected function extractedSupportedProperty(array $data, string $id): array
     {
         $supportedProperties = $data['hydra:supportedProperty'] ?? [];
+        self::assertIsArray($supportedProperties);
         $nestedSupportedProperties = array_column($supportedProperties, 'hydra:property');
+        $this->assertIsListOfArray($nestedSupportedProperties);
         $filteredSupportedProperties = array_filter(
             $nestedSupportedProperties,
             static fn (array $supportedProperty) => $supportedProperty['@id'] === "#{$id}"
@@ -136,23 +151,29 @@ abstract class WebTestCase extends \Symfony\Bundle\FrameworkBundle\Test\WebTestC
         self::assertCount(1, $filteredSupportedProperties);
         $supportedProperty = $filteredSupportedProperties[array_key_first($filteredSupportedProperties)] ?? null;
         self::assertNotNull($supportedProperty);
+        $this->assertIsAssociativeArray($supportedProperty);
 
         return $supportedProperty;
     }
 
     /**
      * @param array<string,mixed> $data
-     * * @return array<string,mixed>
+     * @return list<string>
      */
     protected function extractOperationMethods(array $data): array
     {
         $supportedOperations = $data['hydra:supportedOperation'] ?? [];
+        self::assertIsArray($supportedOperations);
+
         $methods = array_column($supportedOperations, 'hydra:method');
-        self::assertIsArray($methods);
+        $this->assertIsStringList($methods);
 
         return $methods;
     }
 
+    /**
+     * @return non-empty-string
+     */
     protected function authenticate(string $username, string $password): string
     {
         $client = $this->client ??= self::createClient();
@@ -172,12 +193,14 @@ abstract class WebTestCase extends \Symfony\Bundle\FrameworkBundle\Test\WebTestC
         );
 
         $response = $client->getResponse();
-        self::assertSame(Response::HTTP_OK, $response->getStatusCode());
         $responseBody = $response->getContent();
+        self::assertIsString($responseBody);
+        self::assertSame(Response::HTTP_OK, $response->getStatusCode(), $responseBody);
         $data = $this->decodeAssociativeJson($responseBody);
         self::assertArrayHasKey('token', $data);
         $token = $data['token'] ?? '';
-        self::assertGreaterThan(1, $token);
+        self::assertIsString($token);
+        self::assertNotSame('', $token);
 
         self::ensureKernelShutdown();
 
@@ -185,20 +208,24 @@ abstract class WebTestCase extends \Symfony\Bundle\FrameworkBundle\Test\WebTestC
     }
 
     /**
-     * @param array<non-empty-string,string> $replacements
+     * @param non-empty-string $string
+     * @param array<non-empty-string,string|int> $replacements
+     * @return non-empty-string
      */
     protected function replace(string $string, array $replacements): string
     {
+        self::assertNotSame('', $string);
+        $replacements = array_map(
+            static fn (string|int $value) => is_string($value) ? $value : (string) $value,
+            $replacements
+        );
         $replacementKeys = array_keys($replacements);
         $matches = [];
         $result = preg_match_all('%\{(?P<names>[a-zA-Z0-9]+)\}%', $string, $matches);
         self::assertIsInt($result);
-        self::assertSame(
-            $replacementKeys,
-            $matches['names'],
-            'Not all or too much placeholders are given for string: ' . $string
-        );
-        $outputString = str_replace(
+        self::assertSame($replacementKeys, $matches['names'], 'Not all or too much placeholders are given for string: ' . $string);
+
+        $replacedString = str_replace(
             array_map(
                 static fn (string $key): string => '{' . $key . '}',
                 $replacementKeys,
@@ -206,9 +233,9 @@ abstract class WebTestCase extends \Symfony\Bundle\FrameworkBundle\Test\WebTestC
             array_values($replacements),
             $string
         );
-        self::assertIsString($outputString);
+        self::assertNotSame('', $replacedString);
 
-        return $outputString;
+        return $replacedString;
     }
 
     /**
@@ -293,5 +320,65 @@ abstract class WebTestCase extends \Symfony\Bundle\FrameworkBundle\Test\WebTestC
         );
 
         return $client->getResponse();
+    }
+
+    /**
+     * @phpstan-assert list<array<array-key,mixed>> $values
+     */
+    protected function assertIsListOfArray(mixed $values): void
+    {
+        self::assertIsArray($values);
+        self::assertTrue(array_is_list($values));
+        foreach ($values as $value) {
+            self::assertIsArray($value);
+        }
+    }
+
+    /**
+     * @phpstan-assert list<non-empty-string> $values
+     */
+    protected function assertIsStringList(mixed $values): void
+    {
+        self::assertIsArray($values);
+        self::assertTrue(array_is_list($values));
+        foreach ($values as $value) {
+            self::assertIsString($value);
+            self::assertNotSame('', $value);
+        }
+    }
+
+    /**
+     * @phpstan-assert array<string,mixed> $values
+     */
+    protected function assertIsAssociativeArray(mixed $values): void
+    {
+        self::assertIsArray($values);
+        foreach ($values as $key => $value) {
+            self::assertIsString($key);
+        }
+    }
+
+    /**
+     * @param list<array<array-key,mixed>> $violationItems
+     * @return array<non-empty-string,list<non-empty-string>>
+     */
+    protected function collectViolations(array $violationItems): mixed
+    {
+        return array_reduce(
+            $violationItems,
+            static function (array $accumulator, array $violation): array {
+                $propertyPath = $violation['propertyPath'] ?? '';
+                $message = $violation['message'] ?? '';
+                self::assertNotSame('', $propertyPath);
+                self::assertNotSame('', $message);
+                $accumulator[$propertyPath] ??= [];
+                self::assertIsArray($accumulator[$propertyPath]);
+                $accumulator[$propertyPath][] = $message;
+
+                /** @var array<non-empty-string,list<non-empty-string>> */
+                return $accumulator;
+            },
+            []
+        );
     }
 }

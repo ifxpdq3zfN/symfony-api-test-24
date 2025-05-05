@@ -18,7 +18,7 @@ use ApiPlatform\Metadata\Put;
 use ApiPlatform\Metadata\Tests\Fixtures\Metadata\Get;
 use App\Repository\CustomerUserRepository;
 use App\State\CustomerUserProcessor;
-use DateTimeInterface;
+use DateTimeImmutable;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Security\Core\User\PasswordAuthenticatedUserInterface;
@@ -95,7 +95,7 @@ class CustomerUser implements PasswordAuthenticatedUserInterface
     #[Groups(['customer:read', 'customer-user:read'])]
     #[SerializedName('lastLogin')]
     #[ORM\Column(name: 'last_login', type: Types::DATETIME_IMMUTABLE, nullable: true)]
-    private ?DateTimeInterface $lastLogin;
+    private ?DateTimeImmutable $lastLogin;
 
     #[ORM\OneToOne(mappedBy: 'customerUser', targetEntity: Customer::class, cascade: ['persist'])]
     #[ORM\JoinColumn(name: 'kundenid', referencedColumnName: 'id')]
@@ -113,6 +113,13 @@ class CustomerUser implements PasswordAuthenticatedUserInterface
     public function setPlainPassword(?string $plainPassword): CustomerUser
     {
         $this->plainPassword = $plainPassword;
+
+        return $this;
+    }
+
+    public function setLastLogin(?DateTimeImmutable $lastLogin): CustomerUser
+    {
+        $this->lastLogin = $lastLogin;
 
         return $this;
     }
@@ -169,7 +176,7 @@ class CustomerUser implements PasswordAuthenticatedUserInterface
         return $this->isActive;
     }
 
-    public function getLastLogin(): ?DateTimeInterface
+    public function getLastLogin(): ?DateTimeImmutable
     {
         return $this->lastLogin;
     }

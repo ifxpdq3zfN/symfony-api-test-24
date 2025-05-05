@@ -17,12 +17,14 @@ final class CustomerUserProcessor implements ProcessorInterface
     public function __construct(
         #[Autowire(service: 'api_platform.doctrine.orm.state.persist_processor')]
         private readonly ProcessorInterface $persistProcessor,
-        private readonly UserPasswordHasherInterface $passwordHasher
+        private readonly UserPasswordHasherInterface $passwordHasher,
     ) {
     }
 
     /**
-     * @param CustomerUser $data
+     * @param CustomerUser|mixed $data
+     * @param array<array-key,mixed> $uriVariables
+     * @param array<array-key,mixed> $context
      * @return CustomerUser
      */
     public function process(mixed $data, Operation $operation, array $uriVariables = [], array $context = []): mixed
@@ -32,19 +34,21 @@ final class CustomerUserProcessor implements ProcessorInterface
         }
         $customerUser = $this->modifyCustomerUser($data, $operation);
 
-        return $this->persistProcessor->process($customerUser, $operation, $uriVariables, $context);
+        $processedCustomerUser = $this->persistProcessor->process($customerUser, $operation, $uriVariables, $context);
+        if (!$processedCustomerUser instanceof CustomerUser) {
+            throw new InvalidTypeException($processedCustomerUser, CustomerUser::class);
+        }
+
+        return $processedCustomerUser;
     }
 
-    /**
-     * @param CustomerUser $customerUser
-     */
     private function modifyCustomerUser(CustomerUser $customerUser, Operation $operation): CustomerUser
     {
         if ($operation instanceof Delete) {
             $customerUser->setIsActive(false);
         }
 
-        if ($customerUser->getPlainPassword()) {
+        if ($customerUser->getPlainPassword() !== null) {
             $hashedPassword = $this->passwordHasher->hashPassword(
                 $customerUser,
                 $customerUser->getPlainPassword()

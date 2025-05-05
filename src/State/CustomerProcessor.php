@@ -22,7 +22,9 @@ class CustomerProcessor implements ProcessorInterface
     }
 
     /**
-     * @param Customer $data
+     * @param Customer|mixed $data
+     * @param array<array-key,mixed> $uriVariables
+     * @param array<array-key,mixed> $context
      * @return Customer
      */
     public function process(mixed $data, Operation $operation, array $uriVariables = [], array $context = []): mixed
@@ -32,7 +34,12 @@ class CustomerProcessor implements ProcessorInterface
         }
         $data = $this->modifyCustomer($data, $operation);
 
-        return $this->persistProcessor->process($data, $operation, $uriVariables, $context);
+        $processedCustomer = $this->persistProcessor->process($data, $operation, $uriVariables, $context);
+        if (!$processedCustomer instanceof Customer) {
+            throw new InvalidTypeException($processedCustomer, Customer::class);
+        }
+
+        return $processedCustomer;
     }
 
     private function modifyCustomer(Customer $customer, Operation $operation): Customer

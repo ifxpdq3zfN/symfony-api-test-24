@@ -25,23 +25,30 @@ final class CurrentUserExtension implements QueryCollectionExtensionInterface, Q
     ) {
     }
 
+    /**
+     * @param array<array-key,mixed> $context
+     */
     public function applyToCollection(
         QueryBuilder $queryBuilder,
         QueryNameGeneratorInterface $queryNameGenerator,
         string $resourceClass,
-        Operation $operation = null,
-        array $context = []
+        ?Operation $operation = null,
+        array $context = [],
     ): void {
         $this->modifyQueryBuilder($queryBuilder, $resourceClass);
     }
 
+    /**
+     * @param array<array-key,mixed> $identifiers
+     * @param array<array-key,mixed> $context
+     */
     public function applyToItem(
         QueryBuilder $queryBuilder,
         QueryNameGeneratorInterface $queryNameGenerator,
         string $resourceClass,
         array $identifiers,
-        Operation $operation = null,
-        array $context = []
+        ?Operation $operation = null,
+        array $context = [],
     ): void {
         $this->modifyQueryBuilder($queryBuilder, $resourceClass);
     }
@@ -62,10 +69,10 @@ final class CurrentUserExtension implements QueryCollectionExtensionInterface, Q
         $rootAlias = $queryBuilder->getRootAliases()[0];
         $queryBuilder
             ->leftJoin("{$rootAlias}.customerAddressDetails", 'customerAddressDetail')
-            ->leftJoin("customerAddressDetail.customer", 'customer')
-            ->andWhere("customer.broker = :currentUser")
-            ->andWhere("customerAddressDetail.isDeleted = :isDeleted")
-            ->andWhere("customer.isDeleted = :isDeleted");
+            ->leftJoin('customerAddressDetail.customer', 'customer')
+            ->andWhere('customer.broker = :currentUser')
+            ->andWhere('customerAddressDetail.isDeleted = :isDeleted')
+            ->andWhere('customer.isDeleted = :isDeleted');
 
         $queryBuilder
             ->setParameter('currentUser', $this->getCurrentLoggedInBroker())
@@ -90,8 +97,8 @@ final class CurrentUserExtension implements QueryCollectionExtensionInterface, Q
         $queryBuilder
             ->leftJoin("{$rootAlias}.customer", 'customer')
             ->andWhere("{$rootAlias}.isActive = :isActive")
-            ->andWhere("customer.broker = :currentUser")
-            ->andWhere("customer.isDeleted = :isDeleted");
+            ->andWhere('customer.broker = :currentUser')
+            ->andWhere('customer.isDeleted = :isDeleted');
 
         $queryBuilder
             ->setParameter('currentUser', $this->getCurrentLoggedInBroker())
@@ -106,6 +113,5 @@ final class CurrentUserExtension implements QueryCollectionExtensionInterface, Q
             return $currentUser->getBroker();
         }
         throw new InvalidTypeException($currentUser, BrokerUser::class);
-
     }
 }

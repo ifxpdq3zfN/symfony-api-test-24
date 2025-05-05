@@ -13,7 +13,7 @@ final class CustomerUserTest extends WebTestCase
     private const CUSTOMER_USER_RESOURCES_URI = '/foo/user';
     private const CUSTOMER_USER_RESOURCE_URI = '/foo/user/{customerUserId}';
     private const CUSTOMER_RESOURCES_URI = '/foo/kunden';
-    private const CUSTOMER_RESOURCE_URI = "/foo/kunden/{customerId}";
+    private const CUSTOMER_RESOURCE_URI = '/foo/kunden/{customerId}';
     private const ANY_EXISTING_CUSTOMER_USER_ID = 1;
     private const ANY_EXISTING_CUSTOMER_ID = 'D5F449CE';
 
@@ -25,11 +25,11 @@ final class CustomerUserTest extends WebTestCase
 
         $response = $this->getJsonLd($uri, $token);
 
-        self::assertSame(Response::HTTP_OK, $response->getStatusCode());
-
         $responseBody = $response->getContent();
         self::assertIsString($responseBody);
+        self::assertSame(Response::HTTP_OK, $response->getStatusCode(), $responseBody);
         $data = $this->decodeAssociativeJson($responseBody);
+        $this->assertIsAssociativeArray($data);
 
         $methods = $this->extractMethods($data, 'CustomerUser');
         $collectionMethods = $this->extractCollectionMethods($data, 'CustomerUser');
@@ -38,22 +38,29 @@ final class CustomerUserTest extends WebTestCase
         self::assertSame([Request::METHOD_GET, Request::METHOD_POST], $collectionMethods);
     }
 
+    /**
+     * @return iterable<non-empty-string, array{
+     *     username:non-empty-string,
+     *     password:non-empty-string,
+     *     expectedCustomerUserId:list<int>
+     * }>
+     */
     public static function provideCustomerUserData(): iterable
     {
         yield 'Users of non deleted customers are not shown' => [
             'username' => 'mfindel@vp-felder.de',
             'password' => 'hommes',
-            'expectedCustomerUserIds' => [1], // Customer user 3 for deleted customer 80BA9796 is not shown.
+            'expectedCustomerUserId' => [1], // Customer user 3 for deleted customer 80BA9796 is not shown.
         ];
         yield 'Users of other broker are shown' => [
             'username' => 'chauser@vp-felder.de',
             'password' => 'hauser',
-            'expectedCustomerUserIds' => [2],
+            'expectedCustomerUserId' => [2],
         ];
         yield 'not active users are not shown' => [
             'username' => 'c_karasius@fondshaus.ag',
             'password' => 'supersicher',
-            'expectedCustomerUserIds' => [], // User with id 4 is not active.
+            'expectedCustomerUserId' => [], // User with id 4 is not active.
         ];
     }
 
@@ -67,15 +74,24 @@ final class CustomerUserTest extends WebTestCase
 
         $response = $this->getJsonLd(self::CUSTOMER_USER_RESOURCES_URI, $token);
 
-        self::assertSame(Response::HTTP_OK, $response->getStatusCode());
-
         $responseBody = $response->getContent();
         self::assertIsString($responseBody);
+        self::assertSame(Response::HTTP_OK, $response->getStatusCode(), $responseBody);
         $data = $this->decodeAssociativeJson($responseBody);
-        $customerUserIds = array_column($data['hydra:member'], 'id');
+        $rawCustomerUserItems = $data['hydra:member'];
+        self::assertIsArray($rawCustomerUserItems);
+        $customerUserIds = array_column($rawCustomerUserItems, 'id');
         self::assertSame($expectedCustomerUserIds, $customerUserIds);
     }
 
+    /**
+     * @return iterable<non-empty-string, array{
+     *     username:non-empty-string,
+     *     password:non-empty-string,
+     *     customerUserId:positive-int,
+     *     isExisting:bool
+     * }>
+     */
     public static function provideSingleCustomerUserData(): iterable
     {
         yield 'active user of non deleted customer is shown' => [
@@ -108,6 +124,7 @@ final class CustomerUserTest extends WebTestCase
     }
 
     /**
+     * @param positive-int $customerUserId
      * @dataProvider provideSingleCustomerUserData
      */
     public function testGetCustomerUser(string $username, string $password, int $customerUserId, bool $isExisting): void
@@ -142,25 +159,22 @@ final class CustomerUserTest extends WebTestCase
             ),
             $token
         );
-        self::assertSame(Response::HTTP_OK, $response->getStatusCode());
 
         $responseBody = $response->getContent();
         self::assertIsString($responseBody);
+        self::assertSame(Response::HTTP_OK, $response->getStatusCode(), $responseBody);
         $data = $this->decodeAssociativeJson($responseBody);
 
-        self::assertSame(
-            [
-                '@context' => '/foo/contexts/CustomerUser',
-                '@id' => $this->buildCustomerUserUri(1),
-                '@type' => 'CustomerUser',
-                'id' => 1,
-                'username' => 'kari@example.com',
-                'lastLogin' => '2025-05-01T07:58:03+00:00',
-                'kunde' => $this->buildCustomerUri('D5F449CE'),
-                'aktiv' => true,
-            ],
-            $data
-        );
+        self::assertSame([
+            '@context' => '/foo/contexts/CustomerUser',
+            '@id' => $this->buildCustomerUserUri(1),
+            '@type' => 'CustomerUser',
+            'id' => 1,
+            'username' => 'kari@example.com',
+            'lastLogin' => '2025-05-01T07:58:03+00:00',
+            'kunde' => $this->buildCustomerUri('D5F449CE'),
+            'aktiv' => true,
+        ], $data);
     }
 
     public function testCreateCustomerAndCustomerUser(): void
@@ -176,10 +190,12 @@ final class CustomerUserTest extends WebTestCase
                 'dateOfBirth' => '1990-06-15',
             ]
         );
-        self::assertSame(Response::HTTP_CREATED, $createCustomerResponse->getStatusCode());
         $createCustomerResponseBody = $createCustomerResponse->getContent();
+        self::assertIsString($createCustomerResponseBody);
+        self::assertSame(Response::HTTP_CREATED, $createCustomerResponse->getStatusCode(), $createCustomerResponseBody);
         $createUserData = $this->decodeAssociativeJson($createCustomerResponseBody);
         $customerUri = $createUserData['@id'] ?? '';
+        self::assertIsString($customerUri);
         self::assertGreaterThan(1, strlen($customerUri));
 
         $createUserResponse = $this->postJsonLd(
@@ -191,10 +207,12 @@ final class CustomerUserTest extends WebTestCase
                 'kunde' => $customerUri,
             ]
         );
-        self::assertSame(Response::HTTP_CREATED, $createUserResponse->getStatusCode());
         $createUserResponseBody = $createUserResponse->getContent();
+        self::assertIsString($createUserResponseBody);
+        self::assertSame(Response::HTTP_CREATED, $createUserResponse->getStatusCode(), $createUserResponseBody);
         $createUserData = $this->decodeAssociativeJson($createUserResponseBody);
         $customerUserId = $createUserData['id'] ?? '';
+        self::assertIsInt($customerUserId);
 
         $response = $this->getJsonLd(
             $this->replace(
@@ -205,13 +223,20 @@ final class CustomerUserTest extends WebTestCase
             ),
             $token
         );
-        self::assertSame(Response::HTTP_OK, $response->getStatusCode());
         $responseBody = $response->getContent();
+        self::assertIsString($responseBody);
+        self::assertSame(Response::HTTP_OK, $response->getStatusCode(), $responseBody);
         $data = $this->decodeAssociativeJson($responseBody);
 
         self::assertSame('test@test.example.com', $data['username']);
     }
 
+    /**
+     * @return array<non-empty-string, array{
+     *     invalidData:array<non-empty-string,mixed>,
+     *     expectedViolations:array<non-empty-string,list<string>>
+     * }>
+     */
     public function provideInvalidCustomerUserData(): iterable
     {
         yield 'Email is empty' => [
@@ -310,13 +335,12 @@ final class CustomerUserTest extends WebTestCase
 
     /**
      * @dataProvider provideInvalidCustomerUserData
-     *
      * @param array<string,mixed> $invalidData
      * @param array<string,list<string>> $expectedViolations
      */
     public function testCreateCustomerUserWithInvalidData(
         array $invalidData,
-        array $expectedViolations
+        array $expectedViolations,
     ): void {
         $token = $this->authenticate('mfindel@vp-felder.de', 'hommes');
 
@@ -326,16 +350,21 @@ final class CustomerUserTest extends WebTestCase
             $this->createCustomerUserData($invalidData)
         );
 
-        self::assertSame(Response::HTTP_UNPROCESSABLE_ENTITY, $response->getStatusCode());
-
         $responseBody = $response->getContent();
         self::assertIsString($responseBody);
+        self::assertSame(Response::HTTP_UNPROCESSABLE_ENTITY, $response->getStatusCode(), $responseBody);
+
         $data = $this->decodeAssociativeJson($responseBody);
         $violationItems = $data['violations'] ?? [];
+        $this->assertIsListOfArray($violationItems);
         $violations = array_reduce(
             $violationItems,
             static function (array $accumulator, array $violation): array {
-                $accumulator[$violation['propertyPath']][] = $violation['message'];
+                $propertyPath = $violation['propertyPath'] ?? '';
+                self::assertNotSame('', $propertyPath);
+                $accumulator[$propertyPath] ??= [];
+                self::assertIsArray($accumulator[$propertyPath]);
+                $accumulator[$propertyPath][] = $violation['message'];
 
                 return $accumulator;
             },
@@ -355,7 +384,9 @@ final class CustomerUserTest extends WebTestCase
             $this->replace(self::CUSTOMER_USER_RESOURCE_URI, ['customerUserId' => $customerUserId]),
             $token
         );
-        self::assertSame(Response::HTTP_NO_CONTENT, $response->getStatusCode());
+        $responseBody = $response->getContent();
+        self::assertIsString($responseBody);
+        self::assertSame(Response::HTTP_NO_CONTENT, $response->getStatusCode(), $responseBody);
 
         $customerUser = $this->getService(CustomerUserRepository::class)
             ->getById($customerUserId);
@@ -376,14 +407,15 @@ final class CustomerUserTest extends WebTestCase
                 'passwd' => 'abcABC1!',
             ]
         );
-        self::assertSame(Response::HTTP_OK, $response->getStatusCode());
+        $responseBody = $response->getContent();
+        self::assertIsString($responseBody);
+        self::assertSame(Response::HTTP_OK, $response->getStatusCode(), $responseBody);
 
         $fetchedCustomer = $this->getService(CustomerUserRepository::class)
             ->getById($customerUserId);
         self::assertSame('other_test@test.example.com', $fetchedCustomer->getUsername());
-        $password = $fetchedCustomer->getUsername();
+        $password = $fetchedCustomer->getPassword();
         self::assertNotSame('abcABC1!', $password);
-        self::assertIsString($password);
         self::assertGreaterThan(1, strlen($password));
     }
 

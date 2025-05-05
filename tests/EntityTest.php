@@ -37,11 +37,11 @@ final class EntityTest extends WebTestCase
             ->getAll();
         $customerAddressDetail = $customerAddressDetails[array_key_first($customerAddressDetails)] ?? null;
         self::assertInstanceOf(CustomerAddressDetail::class, $customerAddressDetail);
-        self::assertNotNull($customerAddressDetail->getCustomer());
-        self::assertNotNull($customerAddressDetail->getAddress());
-        self::assertNotNull($customerAddressDetail->isBillingAddress());
-        self::assertNotNull($customerAddressDetail->isBusiness());
-        self::assertNotNull($customerAddressDetail->isDeleted());
+        self::assertSame('D5F449CE', $customerAddressDetail->getCustomer()->getId());
+        self::assertSame(1, $customerAddressDetail->getAddress()->getId());
+        self::assertTrue($customerAddressDetail->isBillingAddress());
+        self::assertFalse($customerAddressDetail->isBusiness());
+        self::assertFalse($customerAddressDetail->isDeleted());
 
         $customerUsers = $this->getService(CustomerUserRepository::class)
             ->getAll();

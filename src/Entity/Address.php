@@ -124,13 +124,6 @@ class Address
         return $this;
     }
 
-    public function setId(int $id): Address
-    {
-        $this->id = $id;
-
-        return $this;
-    }
-
     public function setStreet(?string $street): Address
     {
         $this->street = $street;
@@ -154,7 +147,7 @@ class Address
 
     public function setState(?State $state): Address
     {
-        $this->state = $state;
+        $this->state = $state ?? State::NONE;
 
         return $this;
     }
@@ -180,21 +173,21 @@ class Address
 
     public function getLocation(): string
     {
-        return $this->location;
+        return $this->location ?? '';
     }
 
     public function getZipCode(): string
     {
-        return $this->zipCode;
+        return $this->zipCode ?? '';
     }
 
     public function getStreet(): string
     {
-        return $this->street;
+        return $this->street ?? '';
     }
 
     /**
-     * @var Collection<int, CustomerAddressDetail>
+     * @return Collection<int, CustomerAddressDetail>
      */
     #[Groups(['address:read'])]
     public function getCustomerAddressDetails(): Collection

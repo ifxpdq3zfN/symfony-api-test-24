@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Tests;
 
+use App\Entity\CustomerAddressDetail;
 use App\Repository\AddressRepository;
 use App\State;
 use Symfony\Component\HttpFoundation\Request;
@@ -12,8 +13,8 @@ use Symfony\Component\HttpFoundation\Response;
 final class AddressTest extends WebTestCase
 {
     private const ADDRESS_RESOURCES_URI = '/foo/adressen';
-    private const ADDRESS_RESOURCE_URI = "/foo/adressen/{addressId}";
-    private const CUSTOMER_RESOURCE_URI = "/foo/kunden/{customerId}";
+    private const ADDRESS_RESOURCE_URI = '/foo/adressen/{addressId}';
+    private const CUSTOMER_RESOURCE_URI = '/foo/kunden/{customerId}';
     private const CUSTOMER_DETAIL_RESOURCE_URI = '/foo/kunden/{customerId}/adressen/{addressId}/details';
     private const ANY_EXISTING_CUSTOMER_ID = 'D5F449CE';
     private const ANY_EXISTING_ADDRESS_ID = 1;
@@ -26,11 +27,12 @@ final class AddressTest extends WebTestCase
 
         $response = $this->getJsonLd($uri, $token);
 
-        self::assertSame(Response::HTTP_OK, $response->getStatusCode());
-
         $responseBody = $response->getContent();
         self::assertIsString($responseBody);
+        self::assertSame(Response::HTTP_OK, $response->getStatusCode(), $responseBody);
+
         $data = $this->decodeAssociativeJson($responseBody);
+        $this->assertIsAssociativeArray($data);
 
         $methods = $this->extractMethods($data, 'Address');
         $collectionMethods = $this->extractCollectionMethods($data, 'Address');
@@ -39,6 +41,13 @@ final class AddressTest extends WebTestCase
         self::assertSame([Request::METHOD_GET, Request::METHOD_POST], $collectionMethods);
     }
 
+    /**
+     * @return array<non-empty-string,array{
+     *     username:non-empty-string,
+     *     password:non-empty-string,
+     *     expectedAddressIds:list<positive-int>
+     * }>
+     */
     public static function provideAddressData(): iterable
     {
         yield 'Marcus Findel non deleted customer addresses are shown' => [
@@ -63,15 +72,25 @@ final class AddressTest extends WebTestCase
 
         $response = $this->getJsonLd(self::ADDRESS_RESOURCES_URI, $token);
 
-        self::assertSame(Response::HTTP_OK, $response->getStatusCode());
-
         $responseBody = $response->getContent();
         self::assertIsString($responseBody);
+        self::assertSame(Response::HTTP_OK, $response->getStatusCode(), $responseBody);
+
         $data = $this->decodeAssociativeJson($responseBody);
-        $addressIds = array_column($data['hydra:member'], 'id');
+        $rawAddressItems = $data['hydra:member'];
+        self::assertIsArray($rawAddressItems);
+        $addressIds = array_column($rawAddressItems, 'id');
         self::assertSame($expectedAddressIds, $addressIds);
     }
 
+    /**
+     * @return iterable<non-empty-string,array{
+     *     username:non-empty-string,
+     *     password:non-empty-string,
+     *     addressId:int,
+     *     isExisting:bool
+     * }>
+     */
     public static function provideSingleAddressData(): iterable
     {
         yield 'non deleted customer addresses is shown' => [
@@ -95,19 +114,19 @@ final class AddressTest extends WebTestCase
         yield '... but to the assigned broker its shown' => [
             'username' => 'chauser@vp-felder.de',
             'password' => 'hauser',
-            'expectedAddressIds' => 4,
+            'addressId' => 4,
             'isExisting' => true,
         ];
         yield 'deleted address should be not shown' => [
             'username' => 'chauser@vp-felder.de',
             'password' => 'hauser',
-            'expectedAddressIds' => 3,
+            'addressId' => 3,
             'isExisting' => false,
         ];
         yield 'non existing address should be not shown' => [
             'username' => 'chauser@vp-felder.de',
             'password' => 'hauser',
-            'expectedAddressIds' => -1,
+            'addressId' => -1,
             'isExisting' => false,
         ];
     }
@@ -144,35 +163,33 @@ final class AddressTest extends WebTestCase
             $token
         );
 
-        self::assertSame(Response::HTTP_OK, $response->getStatusCode());
-
         $responseBody = $response->getContent();
         self::assertIsString($responseBody);
+        self::assertSame(Response::HTTP_OK, $response->getStatusCode(), $responseBody);
+
         $data = $this->decodeAssociativeJson($responseBody);
-        self::assertSame(
-            [
-                '@context' => '/foo/contexts/Address',
-                '@id' => $this->replace(self::ADDRESS_RESOURCE_URI, ['addressId' => $addressId]),
-                '@type' => 'Address',
-                'id' => 2,
-                'strasse' => 'Berliner Str. 12',
-                'ort' => 'Zossen',
-                'bundesland' => 'BB',
-                'customerAddressDetails' => [
-                    [
-                        '@id' => $this->replace(
-                            self::CUSTOMER_DETAIL_RESOURCE_URI,
-                            ['customerId' => $customerId, 'addressId' => $addressId]
-                        ),
-                        '@type' => 'CustomerAddressDetail',
-                        'kunde' => $this->replace(self::CUSTOMER_RESOURCE_URI, ['customerId' => $customerId]),
-                        'geschaeftlich' => true,
-                        'rechnungsadresse' => false,
-                    ],
+        self::assertSame([
+            '@context' => '/foo/contexts/Address',
+            '@id' => $this->replace(self::ADDRESS_RESOURCE_URI, ['addressId' => $addressId]),
+            '@type' => 'Address',
+            'id' => 2,
+            'strasse' => 'Berliner Str. 12',
+            'plz' => '',
+            'ort' => 'Zossen',
+            'bundesland' => 'BB',
+            'customerAddressDetails' => [
+                [
+                    '@id' => $this->replace(
+                        self::CUSTOMER_DETAIL_RESOURCE_URI,
+                        ['customerId' => $customerId, 'addressId' => $addressId]
+                    ),
+                    '@type' => 'CustomerAddressDetail',
+                    'kunde' => $this->replace(self::CUSTOMER_RESOURCE_URI, ['customerId' => $customerId]),
+                    'geschaeftlich' => true,
+                    'rechnungsadresse' => false,
                 ],
             ],
-            $data
-        );
+        ], $data);
     }
 
     public function testCreateAddressForBroker(): void
@@ -197,10 +214,9 @@ final class AddressTest extends WebTestCase
                 ],
             ]
         );
-        self::assertSame(Response::HTTP_CREATED, $response->getStatusCode());
         $responseBody = $response->getContent();
-
         self::assertIsString($responseBody);
+        self::assertSame(Response::HTTP_CREATED, $response->getStatusCode(), $responseBody);
         $data = $this->decodeAssociativeJson($responseBody);
         self::assertArrayHasKey('id', $data);
         $addressId = $data['id'] ?? '';
@@ -220,6 +236,7 @@ final class AddressTest extends WebTestCase
         );
         self::assertCount(1, $fetchedCustomerAddressDetails);
         $fetchedCustomerAddressDetail = $fetchedCustomerAddressDetails->first();
+        self::assertInstanceOf(CustomerAddressDetail::class, $fetchedCustomerAddressDetail);
 
         self::assertSame(self::ANY_EXISTING_CUSTOMER_ID, $fetchedCustomerAddressDetail->getCustomer()->getId());
         self::assertTrue($fetchedCustomerAddressDetail->isBusiness());
@@ -239,7 +256,7 @@ final class AddressTest extends WebTestCase
                 'plz' => '',
                 'ort' => '',
                 'bundesland' => '',
-//                'bundesland' => State::BE->value,
+                //                'bundesland' => State::BE->value,
                 'customerAddressDetail' => [
                     'kunde' => $this->replace(
                         self::CUSTOMER_RESOURCE_URI,
@@ -250,38 +267,28 @@ final class AddressTest extends WebTestCase
                 ],
             ]
         );
-        self::assertSame(Response::HTTP_UNPROCESSABLE_ENTITY, $response->getStatusCode());
-
         $responseBody = $response->getContent();
         self::assertIsString($responseBody);
-        $data = $this->decodeAssociativeJson($responseBody);
-        $violationItems = $data['violations'] ?? [];
-        $violations = array_reduce(
-            $violationItems,
-            static function (array $accumulator, array $violation): array {
-                $accumulator[$violation['propertyPath']][] = $violation['message'];
+        self::assertSame(Response::HTTP_UNPROCESSABLE_ENTITY, $response->getStatusCode(), $responseBody);
 
-                return $accumulator;
-            },
-            []
-        );
-        self::assertSame(
-            [
-                'strasse' => [
-                    'Property "strasse" cannot be blank',
-                ],
-                'plz' => [
-                    'Property "plz" cannot be blank',
-                ],
-                'ort' => [
-                    'Property "ort" cannot be blank',
-                ],
-                'bundesland' => [
-                    'Property "bundesland" cannot be blank',
-                ],
+        $data = $this->decodeAssociativeJson($responseBody);
+        $violationItems = $data['violations'];
+        $this->assertIsListOfArray($violationItems);
+        $violations = $this->collectViolations($violationItems);
+        self::assertSame([
+            'strasse' => [
+                'Property "strasse" cannot be blank',
             ],
-            $violations
-        );
+            'plz' => [
+                'Property "plz" cannot be blank',
+            ],
+            'ort' => [
+                'Property "ort" cannot be blank',
+            ],
+            'bundesland' => [
+                'Property "bundesland" cannot be blank',
+            ],
+        ], $violations);
     }
 
     public function testUpdateAddress(): void
@@ -307,7 +314,9 @@ final class AddressTest extends WebTestCase
             ]
         );
 
-        self::assertSame(Response::HTTP_OK, $response->getStatusCode());
+        $responseBody = $response->getContent();
+        self::assertIsString($responseBody);
+        self::assertSame(Response::HTTP_OK, $response->getStatusCode(), $responseBody);
 
         $fetchedAddress = $this->getService(AddressRepository::class)
             ->getById($addressId);
@@ -328,7 +337,10 @@ final class AddressTest extends WebTestCase
             $this->replace(self::ADDRESS_RESOURCE_URI, ['addressId' => $addressId]),
             $token
         );
-        self::assertSame(Response::HTTP_NO_CONTENT, $response->getStatusCode());
+
+        $responseBody = $response->getContent();
+        self::assertIsString($responseBody);
+        self::assertSame(Response::HTTP_NO_CONTENT, $response->getStatusCode(), $responseBody);
 
         $fetchedAddress = $this->getService(AddressRepository::class)
             ->getById($addressId);

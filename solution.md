@@ -1,4 +1,4 @@
-[//]: # (# todo: prof read )
+# Solution
 
 Generate a jwt token and copy it to (mac) clipboard:
 ```shell

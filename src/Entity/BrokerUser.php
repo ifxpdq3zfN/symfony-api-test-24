@@ -39,6 +39,20 @@ class BrokerUser implements UserInterface, PasswordAuthenticatedUserInterface
         return $this->id;
     }
 
+    public function setBroker(Broker $broker): BrokerUser
+    {
+        $this->broker = $broker;
+
+        return $this;
+    }
+
+    public function setUsername(string $username): BrokerUser
+    {
+        $this->username = $username;
+
+        return $this;
+    }
+
     public function getRoles(): array
     {
         return [];
