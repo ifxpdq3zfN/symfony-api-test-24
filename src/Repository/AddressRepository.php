@@ -57,15 +57,15 @@ class AddressRepository extends ServiceEntityRepository
     /**
      * @return list<Address>
      */
-    public function getCustomerAddresses(string $customerId): mixed
+    public function getCustomerAddresses(string $customerId): array
     {
         $queryBuilder = $this->getEntityManager()->createQueryBuilder();
         $queryBuilder->select('a')
             ->from(Address::class, 'a')
-            ->innerJoin(CustomerAddressDetail::class, 'ca', 'WITH', 'ca.address = a')
-            ->innerJoin(Customer::class, 'c', 'WITH', 'ca.customer = c')
-            ->andWhere('ca.customer = :customerId')
-            ->andWhere('ca.isDeleted = false')
+            ->innerJoin(CustomerAddressDetail::class, 'cad', 'WITH', 'cad.address = a')
+            ->innerJoin(Customer::class, 'c', 'WITH', 'cad.customer = c')
+            ->andWhere('cad.customer = :customerId')
+            ->andWhere('cad.isDeleted = false')
             ->andWhere('c.isDeleted = 0');
 
         $queryBuilder->setParameter('customerId', $customerId);

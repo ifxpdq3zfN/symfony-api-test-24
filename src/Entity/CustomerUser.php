@@ -16,6 +16,7 @@ use ApiPlatform\Metadata\Link;
 use ApiPlatform\Metadata\Post;
 use ApiPlatform\Metadata\Put;
 use ApiPlatform\Metadata\Tests\Fixtures\Metadata\Get;
+use App\Doctrine\IntegerBackedBooleanType;
 use App\Repository\CustomerUserRepository;
 use App\State\CustomerUserProcessor;
 use DateTimeImmutable;
@@ -89,7 +90,7 @@ class CustomerUser implements PasswordAuthenticatedUserInterface
 
     #[Groups(['customer:read', 'customer-user:read'])]
     #[SerializedName('aktiv')]
-    #[ORM\Column(name: 'aktiv', type: Types::SMALLINT, length: 60, nullable: false)]
+    #[ORM\Column(name: 'aktiv', type: IntegerBackedBooleanType::INTEGER_BACKED_BOOLEAN, length: 60, nullable: false)]
     private bool $isActive = true;
 
     #[Groups(['customer:read', 'customer-user:read'])]

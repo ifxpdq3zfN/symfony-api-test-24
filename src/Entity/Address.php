@@ -19,7 +19,7 @@ use ApiPlatform\Metadata\Tests\Fixtures\Metadata\Get;
 use App\Repository\AddressRepository;
 use App\State;
 use App\State\AddressProcessor;
-use App\State\CustomerAddressDetailProvider;
+use App\State\CustomerAddressProvider;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
 use Doctrine\DBAL\Types\Types;
@@ -51,7 +51,7 @@ use Symfony\Component\Validator\Constraints as Assert;
             identifiers: ['customerId']
         ),
     ],
-    provider: CustomerAddressDetailProvider::class
+    provider: CustomerAddressProvider::class
 )]
 class Address
 {
@@ -68,7 +68,7 @@ class Address
     #[SerializedName('strasse')]
     #[Assert\NotBlank(message: 'Property "strasse" cannot be blank')]
     #[ORM\Column(name: 'strasse', type: Types::STRING)]
-    private ?string $street = null;
+    private string $street = '';
 
     #[Groups(['address:read', 'address:write', 'customer:read'])]
     #[SerializedName('plz')]
@@ -80,13 +80,13 @@ class Address
     #[SerializedName('ort')]
     #[Assert\NotBlank(message: 'Property "ort" cannot be blank')]
     #[ORM\Column(name: 'ort', type: Types::STRING)]
-    private ?string $location = null;
+    private string $location = '';
 
     #[Groups(['address:read', 'address:write', 'customer:read'])]
     #[SerializedName('bundesland')]
     #[Assert\NotBlank(message: 'Property "bundesland" cannot be blank')]
     #[Assert\NotEqualTo(value: State::NONE, message: 'Property "bundesland" cannot be blank')]
-    #[ORM\Column(name: 'bundesland', type: Types::STRING, length: 2, nullable: true, enumType: State::class)]
+    #[ORM\Column(name: 'bundesland', type: Types::STRING, length: 2, nullable: false, enumType: State::class)]
     private State $state;
 
     /**
@@ -101,6 +101,13 @@ class Address
     public function __construct()
     {
         $this->customerAddressDetails = new ArrayCollection();
+    }
+
+    public function setId(int $id): Address
+    {
+        $this->id = $id;
+
+        return $this;
     }
 
     #[Groups(['customer:read'])]
@@ -126,7 +133,7 @@ class Address
 
     public function setStreet(?string $street): Address
     {
-        $this->street = $street;
+        $this->street = $street ?? '';
 
         return $this;
     }
@@ -140,7 +147,7 @@ class Address
 
     public function setLocation(?string $location): Address
     {
-        $this->location = $location;
+        $this->location = $location ?? '';
 
         return $this;
     }

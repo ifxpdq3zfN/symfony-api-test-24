@@ -4,33 +4,37 @@ namespace App\State;
 
 use ApiPlatform\Metadata\Operation;
 use ApiPlatform\State\ProviderInterface;
-use App\Entity\Address;
-use App\Repository\AddressRepository;
+use App\Entity\CustomerAddressDetail;
+use App\Repository\CustomerAddressDetailRepository;
 use App\Throwable\InvalidTypeException;
 
 /**
- * @implements ProviderInterface<Address>
+ * @implements ProviderInterface<CustomerAddressDetail>
  */
 class CustomerAddressDetailProvider implements ProviderInterface
 {
     public function __construct(
-        private readonly AddressRepository $customerRepository,
+        private readonly CustomerAddressDetailRepository $customerAddressDetailRepository,
     ) {
     }
 
     /**
      * @param array<array-key,mixed> $uriVariables
      * @param array<array-key,mixed> $context
-     * @return list<Address>|Address|null
      */
-    public function provide(Operation $operation, array $uriVariables = [], array $context = []): object|array|null
+    public function provide(Operation $operation, array $uriVariables = [], array $context = []): CustomerAddressDetail
     {
         $customerId = $uriVariables['customerId'];
         if (!is_string($customerId)) {
             throw new InvalidTypeException($customerId, 'string');
         }
 
-        return $this->customerRepository
-            ->getCustomerAddresses($customerId);
+        $addressId = $uriVariables['addressId'];
+        if (!is_int($addressId)) {
+            throw new InvalidTypeException($addressId, 'int');
+        }
+
+        return $this->customerAddressDetailRepository
+            ->getCustomerAddressDetail($customerId, $addressId);
     }
 }

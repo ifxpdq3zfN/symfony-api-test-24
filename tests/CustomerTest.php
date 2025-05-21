@@ -15,7 +15,8 @@ final class CustomerTest extends WebTestCase
     private const CUSTOMER_RESOURCE_URI = '/foo/kunden/{customerId}';
     private const CUSTOMER_USER_RESOURCE_URI = '/foo/user/{customerUserId}';
     private const CUSTOMER_USER_SUBRESOURCE_URI = 'foo/kunden/{customerId}/user';
-    private const CUSTOMER_DETAIL_RESOURCE_URI = '/foo/kunden/{customerId}/adressen/{addressId}/details';
+    private const CUSTOMER_ADDRESS_RESOURCE_URI = 'foo/kunden/{customerId}/adressen';
+    private const CUSTOMER_ADDRESS_DETAIL_RESOURCE_URI = '/foo/kunden/{customerId}/adressen/{addressId}/details';
     private const ADDRESS_RESOURCE_URI = '/foo/adressen/{addressId}';
     private const ANY_EXISTING_CUSTOMER_ID = 'D5F449CE';
     private const ANY_EXISTING_CUSTOMER_USER_ID = 1;
@@ -301,7 +302,10 @@ final class CustomerTest extends WebTestCase
         self::assertSame('/foo/contexts/Error', $data['@context'] ?? '');
         self::assertSame('hydra:Error', $data['@type'] ?? '');
         self::assertSame('An error occurred', $data['hydra:title'] ?? '');
-        self::assertSame('Extra attributes are not allowed ("unknown-property" is unknown).', $data['hydra:description'] ?? '');
+        self::assertSame(
+            'Extra attributes are not allowed ("unknown-property" is unknown).',
+            $data['hydra:description'] ?? ''
+        );
     }
 
     public function testDeleteCustomer(): void
@@ -412,12 +416,10 @@ final class CustomerTest extends WebTestCase
         string $customerId,
         array $expectedCustomerAddressDetailIds,
     ): void {
-        $uri = 'foo/kunden/{customerId}/adressen';
-
         $token = $this->authenticate($username, $password);
 
         $response = $this->getJsonLd(
-            $this->replace($uri, ['customerId' => $customerId]),
+            $this->replace(self::CUSTOMER_ADDRESS_RESOURCE_URI, ['customerId' => $customerId]),
             $token
         );
 
@@ -426,9 +428,9 @@ final class CustomerTest extends WebTestCase
         self::assertSame(Response::HTTP_OK, $response->getStatusCode(), $responseBody);
         $data = $this->decodeAssociativeJson($responseBody);
 
-        $rawCustomerAddressDetailItems = $data['hydra:member'] ?? [];
-        self::assertIsArray($rawCustomerAddressDetailItems);
-        $customerAddressDetailIds = array_column($rawCustomerAddressDetailItems, 'id');
+        $rawCustomerAddressItems = $data['hydra:member'] ?? [];
+        self::assertIsArray($rawCustomerAddressItems);
+        $customerAddressDetailIds = array_column($rawCustomerAddressItems, 'id');
         self::assertSame($expectedCustomerAddressDetailIds, $customerAddressDetailIds);
     }
 
@@ -439,13 +441,27 @@ final class CustomerTest extends WebTestCase
         $token = $this->authenticate('mfindel@vp-felder.de', 'hommes');
 
         $uri = $this->replace(
-            self::CUSTOMER_DETAIL_RESOURCE_URI,
+            self::CUSTOMER_ADDRESS_DETAIL_RESOURCE_URI,
             ['customerId' => $customerId, 'addressId' => $addressId]
         );
         $response = $this->getJsonLd($uri, $token);
         $responseBody = $response->getContent();
         self::assertIsString($responseBody);
         self::assertSame(Response::HTTP_OK, $response->getStatusCode(), $responseBody);
+        $data = $this->decodeAssociativeJson($responseBody);
+
+        self::assertSame(
+            [
+                '@context' => '/foo/contexts/CustomerAddressDetail',
+                '@id' => '/foo/kunden/D5F449CE/adressen/1/details',
+                '@type' => 'CustomerAddressDetail',
+                'kunde' => '/foo/kunden/D5F449CE',
+                'adresse' => '/foo/adressen/1',
+                'geschaeftlich' => false,
+                'rechnungsadresse' => true,
+            ],
+            $data
+        );
     }
 
     /**
@@ -480,7 +496,7 @@ final class CustomerTest extends WebTestCase
     private function buildCustomerAddressDetailUrl(string $customerId, int $addressId): string
     {
         return $this->replace(
-            self::CUSTOMER_DETAIL_RESOURCE_URI,
+            self::CUSTOMER_ADDRESS_DETAIL_RESOURCE_URI,
             ['customerId' => $customerId, 'addressId' => $addressId]
         );
     }

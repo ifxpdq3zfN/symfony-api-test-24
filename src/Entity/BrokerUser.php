@@ -31,7 +31,7 @@ class BrokerUser implements UserInterface, PasswordAuthenticatedUserInterface
     private string $password;
 
     #[ORM\ManyToOne(targetEntity: Broker::class)]
-    #[ORM\JoinColumn(name: 'vermittler_id', referencedColumnName: 'id')]
+    #[ORM\JoinColumn(name: 'vermittler_id', referencedColumnName: 'id', nullable: false)]
     private Broker $broker;
 
     public function getId(): ?int

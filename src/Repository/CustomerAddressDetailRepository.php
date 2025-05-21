@@ -2,6 +2,8 @@
 
 namespace App\Repository;
 
+use App\Entity\Address;
+use App\Entity\Customer;
 use App\Entity\CustomerAddressDetail;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\Persistence\ManagerRegistry;
@@ -40,5 +42,25 @@ class CustomerAddressDetailRepository extends ServiceEntityRepository
     public function getAll(): array
     {
         return $this->findAll();
+    }
+
+    public function getCustomerAddressDetail(string $customerId, int $addressId): CustomerAddressDetail
+    {
+        $queryBuilder = $this->createQueryBuilder('cad')
+            ->leftJoin(Address::class, 'a', 'WITH', 'cad.address = a')
+            ->leftJoin(Customer::class, 'c', 'WITH', 'cad.customer = c');
+
+        $queryBuilder->andWhere('cad.isDeleted = false')
+            ->andWhere('a.id = :addressId')
+            ->andWhere('c.id = :customerId')
+            ->andWhere('c.isDeleted = 0');
+
+        $queryBuilder->setParameter('addressId', $addressId)
+            ->setParameter('customerId', $customerId);
+
+        $customerAddressDetail = $queryBuilder->getQuery()->getSingleResult();
+        assert($customerAddressDetail instanceof CustomerAddressDetail);
+
+        return $customerAddressDetail;
     }
 }

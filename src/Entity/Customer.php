@@ -15,6 +15,7 @@ use ApiPlatform\Metadata\GetCollection;
 use ApiPlatform\Metadata\Post;
 use ApiPlatform\Metadata\Put;
 use ApiPlatform\Metadata\Tests\Fixtures\Metadata\Get;
+use App\Doctrine\IntegerBackedBooleanType;
 use App\Doctrine\Random8UpperCharacterGenerator;
 use App\Repository\CustomerRepository;
 use App\State\CustomerProcessor;
@@ -110,11 +111,11 @@ class Customer
     private ?string $email = null;
 
     #[Groups(['customer:read'])]
-    #[ORM\Column(name: 'geloescht', type: Types::SMALLINT, nullable: false)]
+    #[ORM\Column(name: 'geloescht', type: IntegerBackedBooleanType::INTEGER_BACKED_BOOLEAN, nullable: false)]
     private bool $isDeleted = false;
 
     #[ORM\ManyToOne(targetEntity: Broker::class)]
-    #[ORM\JoinColumn(name: 'vermittler_id', referencedColumnName: 'id')]
+    #[ORM\JoinColumn(name: 'vermittler_id', referencedColumnName: 'id', nullable: false)]
     private Broker $broker;
 
     /**
@@ -125,7 +126,7 @@ class Customer
     private Collection $customerAddressDetails;
 
     #[ORM\OneToOne(mappedBy: 'customer', targetEntity: CustomerUser::class, cascade: ['persist'])]
-    private CustomerUser $customerUser;
+    private ?CustomerUser $customerUser = null;
 
     public function __construct()
     {
@@ -245,7 +246,7 @@ class Customer
 
     #[Groups(['customer:read'])]
     #[SerializedName('user')]
-    public function getCustomerUser(): CustomerUser
+    public function getCustomerUser(): ?CustomerUser
     {
         return $this->customerUser;
     }

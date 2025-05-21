@@ -15,7 +15,7 @@ final class AddressTest extends WebTestCase
     private const ADDRESS_RESOURCES_URI = '/foo/adressen';
     private const ADDRESS_RESOURCE_URI = '/foo/adressen/{addressId}';
     private const CUSTOMER_RESOURCE_URI = '/foo/kunden/{customerId}';
-    private const CUSTOMER_DETAIL_RESOURCE_URI = '/foo/kunden/{customerId}/adressen/{addressId}/details';
+    private const CUSTOMER_ADDRESS_DETAIL_RESOURCE_URI = '/foo/kunden/{customerId}/adressen/{addressId}/details';
     private const ANY_EXISTING_CUSTOMER_ID = 'D5F449CE';
     private const ANY_EXISTING_ADDRESS_ID = 1;
 
@@ -180,7 +180,7 @@ final class AddressTest extends WebTestCase
             'customerAddressDetails' => [
                 [
                     '@id' => $this->replace(
-                        self::CUSTOMER_DETAIL_RESOURCE_URI,
+                        self::CUSTOMER_ADDRESS_DETAIL_RESOURCE_URI,
                         ['customerId' => $customerId, 'addressId' => $addressId]
                     ),
                     '@type' => 'CustomerAddressDetail',
