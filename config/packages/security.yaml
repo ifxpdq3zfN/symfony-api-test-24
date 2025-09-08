@@ -1,23 +1,35 @@
 security:
+    password_hashers:
+        App\Entity\BrokerUser: 'auto'
+        App\Entity\CustomerUser: 'auto'
     # https://symfony.com/doc/current/security.html#where-do-users-come-from-user-providers
     providers:
-        users_in_memory: { memory: null }
+        users:
+            entity:
+                class: App\Entity\BrokerUser
+                property: username
     firewalls:
         dev:
             pattern: ^/(_(profiler|wdt)|css|images|js)/
             security: false
+        api:
+            pattern: ^/foo
+            stateless: true
+            provider: users
+            jwt: ~
         main:
-            lazy: true
-            provider: users_in_memory
+            json_login:
+                check_path: /authentication
+                username_path: username
+                password_path: password
+                success_handler: lexik_jwt_authentication.handler.authentication_success
+                failure_handler: lexik_jwt_authentication.handler.authentication_failure
+            stateless: true
 
-            # activate different ways to authenticate
-            # https://symfony.com/doc/current/security.html#firewalls-authentication
-
-            # https://symfony.com/doc/current/security/impersonating_user.html
-            # switch_user: true
-
-    # Easy way to control access for large sections of your site
-    # Note: Only the *first* access control that matches will be used
     access_control:
-        # - { path: ^/admin, roles: ROLE_ADMIN }
-        # - { path: ^/profile, roles: ROLE_USER }
+        - { path: ^/$, roles: PUBLIC_ACCESS }
+        - { path: ^/foo$, roles: PUBLIC_ACCESS }
+        - { path: ^/foo/docs, roles: PUBLIC_ACCESS }
+        - { path: ^/foo/contexts, roles: PUBLIC_ACCESS }
+        - { path: ^/authentication, roles: PUBLIC_ACCESS }
+        - { path: ^/, roles: IS_AUTHENTICATED_FULLY }

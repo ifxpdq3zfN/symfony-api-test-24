@@ -1,6 +1,9 @@
 doctrine:
     dbal:
         url: '%env(resolve:DATABASE_URL)%'
+        types:
+            !php/const App\Doctrine\IntegerBackedBooleanType::INTEGER_BACKED_BOOLEAN:
+                class: App\Doctrine\IntegerBackedBooleanType
 
         # IMPORTANT: You MUST configure your server version,
         # either here or in the DATABASE_URL env var (see .env file)
